@@ -1,5 +1,6 @@
 import os
 import base64
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
@@ -13,12 +14,12 @@ private_key_pem = os.getenv("PRIVATE_KEY")
 if not private_key_pem:
     raise Exception("❌ PRIVATE_KEY environment variable is missing!")
 
-# ✅ 2. Fix formatting (Replace \\n with actual newlines)
+# ✅ Fix formatting (Restore line breaks)
 formatted_private_key = private_key_pem.replace("\\n", "\n").encode()
 
-# ✅ 3. Convert PEM string back to a private key object
+# ✅ Convert PEM string back to a private key object
 private_key = serialization.load_pem_private_key(
-    formatted_private_key,  # Convert from formatted string to bytes
+    formatted_private_key,
     password=None
 )
 
@@ -42,3 +43,7 @@ async def sign_token(request: TokenRequest):
     signature_base64 = base64.b64encode(signed_token).decode()
 
     return {"signed_token": signature_base64}
+
+# ✅ Run the FastAPI app on port 8080 (Required for Railway)
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8080)
