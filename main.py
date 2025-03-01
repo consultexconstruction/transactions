@@ -1,26 +1,32 @@
+import os
 import base64
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives import hashes, serialization
 
-# ✅ Initialize FastAPI
 app = FastAPI()
 
-# ✅ Load private key (PKCS#8 format)
-PRIVATE_KEY_PATH = r'C:\Users\yekat\private_key_pkcs1.pem'  # Ensure this is the correct path
+# ✅ 1. Load the private key from Railway Environment Variables
+private_key_pem = os.getenv("PRIVATE_KEY")
 
-with open(PRIVATE_KEY_PATH, "rb") as key_file:
-    private_key = serialization.load_pem_private_key(
-        key_file.read(),
-        password=None
-    )
+if not private_key_pem:
+    raise Exception("❌ PRIVATE_KEY environment variable is missing!")
 
-# ✅ Define the request model
+# ✅ 2. Fix formatting (Replace \\n with actual newlines)
+formatted_private_key = private_key_pem.replace("\\n", "\n").encode()
+
+# ✅ 3. Convert PEM string back to a private key object
+private_key = serialization.load_pem_private_key(
+    formatted_private_key,  # Convert from formatted string to bytes
+    password=None
+)
+
+# ✅ Define request structure
 class TokenRequest(BaseModel):
     one_time_token: str
 
-# ✅ API Endpoint for Signing Token
+# ✅ API Endpoint to Sign Token
 @app.post("/sign_token")
 async def sign_token(request: TokenRequest):
     one_time_token = request.one_time_token
@@ -32,7 +38,7 @@ async def sign_token(request: TokenRequest):
         hashes.SHA256()
     )
 
-    # ✅ Encode the signature in Base64 for API compatibility
+    # ✅ Encode the signature in Base64
     signature_base64 = base64.b64encode(signed_token).decode()
 
     return {"signed_token": signature_base64}
